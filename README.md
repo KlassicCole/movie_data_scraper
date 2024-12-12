@@ -12,7 +12,6 @@
 ------------
 -The Movie Data Scraper is a Python-based program designed to process large IMDb datasets and generate customized Excel reports.
 -filters movies and TV series based on various criteria, such as ratings, genres, languages, and more.
--user-specific configurations, ensuring more filtering by excluding watched titles
 ```
   ______         _                       
  |  ____|       | |                      
@@ -78,6 +77,8 @@
     **title.basics.tsv**
     **title.ratings.tsv**
     **title.akas.tsv**
+
+- These datasets are distributed for non-Commercial use on the IMDB website.
 
 3. Set Up Watched Lists
 -Add user-specific watched lists (Excel files) to the usrdata/<username>/ folder.

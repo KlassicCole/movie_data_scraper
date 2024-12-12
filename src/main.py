@@ -14,6 +14,7 @@ title_basics_path = os.path.join(datasets_dir, 'title.basics.tsv')
 title_ratings_path = os.path.join(datasets_dir, 'title.ratings.tsv')
 title_akas_path = os.path.join(datasets_dir, 'title.akas.tsv')
 
+# Start with the original data
 def load_datasets():
     """Loads and merges the datasets."""
     title_basics = pd.read_csv(title_basics_path, sep='\t', low_memory=False)
@@ -29,35 +30,47 @@ def load_datasets():
 def interactive_filter(data, akas_data, user_dir):
     """Interactively apply filters to the dataset."""
     print("Welcome to the Interactive Movie and TV Filter!")
-    print("1. Filter by Rating")
-    print("2. Filter by Genre")
-    print("3. Apply Both Filters")
-    choice = input("Choose a filtering option (1/2/3): ")
+    print("Choose filters to apply (e.g., 1,3):")
+    print("1. Filter by Minimum Votes")
+    print("2. Filter by Minimum Rating")
+    print("3. Filter by Genre")
+    print("4. No Filters (Proceed with all data)")
+
+    # Get user selection
+    selected_filters = input("Enter your choices (comma-separated): ").split(',')
 
     # Start with the original data
-    filtered_data = data.copy()  # Ensure you're working on a copy, not modifying the original dataset
+    filtered_data = data.copy()  # Work on a copy to avoid modifying the original dataset
 
-    # Hard filters
+    # HARD CODE: Filter by language (English only)
     filtered_data = filter_by_title_type(filtered_data, ['movie', 'tvSeries'])
-    filtered_data = filter_by_votes(filtered_data, 50000)
+    print("Filtering to Movies and TV-Series...")
+    filtered_data = filter_by_language(filtered_data, akas_data, 'en')
+    print("Filtering for English titles...")
     filtered_data = exclude_vintage_films(filtered_data, year_threshold=1960)
+    print("Filtering for title newer than 1960...")
 
-    # Prompt the user to filter by language
-    language_choice = input("Enter the language code to filter by (e.g., 'en' for English, 'es' for Spanish). Leave blank to skip: ")
-    if language_choice.strip():  # Only apply the filter if something is entered
-        filtered_data = filter_by_language(filtered_data, akas_data, language_choice)
-    else:
-        print("Skipping language filter.")
-
-    # Filter by rating
-    if choice in ['1', '3']:
-        min_rating = float(input("Enter the minimum rating (e.g., 7.5): "))
-        filtered_data = filter_by_rating(filtered_data, min_rating)
-
-    # Filter by genre
-    if choice in ['2', '3']:
-        genre = input("Enter the genre (e.g., Comedy): ")
-        filtered_data = filter_by_genre(filtered_data, genre)
+        # Apply selected filters
+    for choice in selected_filters:
+        choice = choice.strip()  # Clean up whitespace
+        if choice == '1':
+            # Filter by Minimum Votes
+            min_votes = int(input("Enter the minimum number of votes required (e.g., 5000): "))
+            filtered_data = filter_by_votes(filtered_data, min_votes)
+        elif choice == '2':
+            # Filter by Minimum Rating
+            min_rating = float(input("Enter the minimum rating (e.g., 7.5): "))
+            filtered_data = filter_by_rating(filtered_data, min_rating)
+        elif choice == '3':
+            # Filter by Genre
+            genre = input("Enter the genre (e.g., Comedy): ")
+            filtered_data = filter_by_genre(filtered_data, genre)
+        elif choice == '4':
+            # No filters
+            print("Proceeding without additional filters.")
+            break
+        else:
+            print(f"Invalid choice: {choice}. Skipping...")
 
     # Exclude watched movies and TV series
     watched_movies_file = os.path.join(user_dir, 'cole_watched_movies.xlsx')
