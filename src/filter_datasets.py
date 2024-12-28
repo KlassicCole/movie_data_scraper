@@ -1,55 +1,14 @@
 import pandas as pd
-
-def filter_by_title_type(data, allowed_types):
-    """
-    Filters the dataset to include only the specified title types.
-    Parameters:
-        data (pd.DataFrame): The dataset to filter.
-        allowed_types (list): A list of allowed title types (e.g., ['movie', 'tvSeries']).
-    Returns:
-        pd.DataFrame: Filtered DataFrame with only the allowed title types.
-    """
-    return data[data['titleType'].isin(allowed_types)]
-
+    # Filter out rows with startYear less than the threshold
 def exclude_vintage_films(data, year_threshold=1960):
-    """
-    Excludes films released before a specified year.
-
-    Parameters:
-        data (pd.DataFrame): The dataset to filter.
-        year_threshold (int): The earliest allowed year (default is 1960).
-
-    Returns:
-        pd.DataFrame: Filtered DataFrame excluding vintage films.
-    """
+    """Excludes films released before a specified year."""
     # Ensure 'startYear' is numeric, as it might contain invalid values
     data['startYear'] = pd.to_numeric(data['startYear'], errors='coerce')
-
-    # Filter out rows with startYear less than the threshold
     return data[data['startYear'] >= year_threshold]
 
-def filter_by_language(data, akas_data, language):
-    """
-    Filters the dataset to include titles available in a specific language.
-
-    Parameters:
-        data (pd.DataFrame): The main dataset.
-        akas_data (pd.DataFrame): The title.akas dataset.
-        language (str): The language to filter by (e.g., "en" for English).
-
-    Returns:
-        pd.DataFrame: Filtered DataFrame with titles matching the specified language.
-    """
-    # Filter akas_data by the specified language
-    akas_filtered = akas_data[akas_data['language'] == language]
-
-    # Merge the main dataset with the filtered akas data
-    merged_data = pd.merge(data, akas_filtered, left_on='tconst', right_on='titleId')
-
-    # Drop duplicates based on the original tconst from the main dataset
-    deduplicated_data = merged_data.drop_duplicates(subset='tconst')
-
-    return deduplicated_data
+def filter_by_language(data, language='en'):
+    """Filters the dataset to only include titles in the specified language."""
+    return data[data['language'] == language]
 
 def filter_by_votes(data, min_votes):
     """

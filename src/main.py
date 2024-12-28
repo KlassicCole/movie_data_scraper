@@ -1,36 +1,18 @@
-from filter_datasets import filter_by_rating, filter_by_genre, filter_by_title_type, filter_by_votes, \
-    exclude_watched_titles, exclude_vintage_films, filter_by_language
-from output_writer import save_to_excel
-import pandas as pd
 import os
+import pandas as pd
+from filter_datasets import filter_by_votes, filter_by_rating, filter_by_genre, filter_by_language, exclude_watched_titles, exclude_vintage_films
+from output_writer import save_to_excel
 
-# Dynamically construct paths to datasets
-base_dir = os.path.dirname(os.path.abspath(__file__))  # Current directory of this script
-project_dir = os.path.join(base_dir, '..')  # Move up to the project root
-datasets_dir = os.path.join(project_dir, 'datasets')
-
-# File paths
-title_basics_path = os.path.join(datasets_dir, 'title.basics.tsv')
-title_ratings_path = os.path.join(datasets_dir, 'title.ratings.tsv')
-title_akas_path = os.path.join(datasets_dir, 'title.akas.tsv')
-
-# Start with the original data
-def load_datasets():
-    """Loads and merges the datasets."""
-    title_basics = pd.read_csv(title_basics_path, sep='\t', low_memory=False)
-    title_ratings = pd.read_csv(title_ratings_path, sep='\t')
-    title_akas = pd.read_csv(title_akas_path, sep='\t', low_memory=False)
-
-    # Merge basics and ratings datasets
-    merged_data = pd.merge(title_basics, title_ratings, on='tconst')
-
-    return merged_data, title_akas
+def load_dataset(file_path):
+    """Loads a single dataset from a TSV file."""
+    print(f"Loading datasets... {file_path}")
+    return pd.read_csv(file_path, sep="\t", low_memory=False)
 
 # Interactive filtering function
-def interactive_filter(data, akas_data, user_dir):
+def interactive_filter(data, user_dir):
     """Interactively apply filters to the dataset."""
     print("Welcome to the Interactive Movie and TV Filter!")
-    print("Choose filters to apply (e.g., 1,3):")
+    print("Choose filters to apply (e.g.,1,3):")
     print("1. Filter by Minimum Votes")
     print("2. Filter by Minimum Rating")
     print("3. Filter by Genre")
@@ -42,15 +24,13 @@ def interactive_filter(data, akas_data, user_dir):
     # Start with the original data
     filtered_data = data.copy()  # Work on a copy to avoid modifying the original dataset
 
-    # HARD CODE: Filter by language (English only)
-    filtered_data = filter_by_title_type(filtered_data, ['movie', 'tvSeries'])
-    print("Filtering to Movies and TV-Series...")
-    filtered_data = filter_by_language(filtered_data, akas_data, 'en')
-    print("Filtering for English titles...")
+    # HARD CODED Filters
+    # filtered_data = filter_by_language(filtered_data, 'en')
+    # print("Filtering for English titles...")
     filtered_data = exclude_vintage_films(filtered_data, year_threshold=1960)
     print("Filtering for title newer than 1960...")
 
-        # Apply selected filters
+    # Apply selected filters
     for choice in selected_filters:
         choice = choice.strip()  # Clean up whitespace
         if choice == '1':
@@ -72,42 +52,45 @@ def interactive_filter(data, akas_data, user_dir):
         else:
             print(f"Invalid choice: {choice}. Skipping...")
 
-    # Exclude watched movies and TV series
-    watched_movies_file = os.path.join(user_dir, 'cole_watched_movies.xlsx')
-    filtered_movies = filtered_data[filtered_data['titleType'] == 'movie']
-    filtered_movies = exclude_watched_titles(filtered_movies, watched_movies_file)
+    # Exclude watched titles for both movies and TV series
+    watched_movies_file = os.path.join(user_dir, "cole_watched_movies.xlsx")
+    filtered_data = exclude_watched_titles(filtered_data, watched_movies_file)
 
-    watched_tvseries_file = os.path.join(user_dir, 'cole_watched_tvseries.xlsx')
-    filtered_tvseries = filtered_data[filtered_data['titleType'] == 'tvSeries']
-    filtered_tvseries = exclude_watched_titles(filtered_tvseries, watched_tvseries_file)
+    watched_tvseries_file = os.path.join(user_dir, "cole_watched_tvseries.xlsx")
+    filtered_data = exclude_watched_titles(filtered_data, watched_tvseries_file)
 
-    return filtered_data, filtered_movies, filtered_tvseries
+    return filtered_data
 
 def main():
-    # Define user-specific directory
-    user_name = "klassiccole"  # Change this if you want to use a dynamic username
-    user_dir = os.path.join(project_dir, 'usrdata', user_name)
-    os.makedirs(user_dir, exist_ok=True)  # Create user-specific folder if it doesn't exist
-
-    # Load the datasets
-    full_data, akas_data = load_datasets()
-
-    # Apply interactive filtering
-    filter_data, filtered_movies, filtered_tvseries = interactive_filter(full_data, akas_data, user_dir)
-
-    # Save the filtered datasets to separate Excel files
-    outputs_dir = os.path.join(project_dir, 'outputs')
+    # Paths and directories
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+    datasets_dir = os.path.join(project_root, "datasets", "restructured_datasets")
+    outputs_dir = os.path.join(project_root, "outputs")
+    user_dir = os.path.join(project_root, "usrdata", "klassiccole")
     os.makedirs(outputs_dir, exist_ok=True)
 
-    movies_file = os.path.join(outputs_dir, 'filtered_movies.xlsx')
-    tvseries_file = os.path.join(outputs_dir, 'filtered_tvseries.xlsx')
+    # File paths
+    movies_path = os.path.join(datasets_dir, "movies.tsv")
+    tvseries_path = os.path.join(datasets_dir, "tvseries.tsv")
 
-    save_to_excel(filtered_movies, movies_file)
-    save_to_excel(filtered_tvseries, tvseries_file)
+    # Load datasets
+    movies_data = load_dataset(movies_path)
+    tvseries_data = load_dataset(tvseries_path)
 
-    print(f"Filtered movies saved to {movies_file}")
-    print(f"Filtered TV series saved to {tvseries_file}")
+    # Prompt user for filters and apply the same logic to both datasets
+    filtered_movies = interactive_filter(movies_data, user_dir)
+    filtered_tvseries = tvseries_data.copy()
+
+    # Apply the same filters to TV series without prompting again
+    filtered_tvseries = filter_by_language(filtered_tvseries, 'en')
+    filtered_tvseries = exclude_vintage_films(filtered_tvseries, year_threshold=1960)
+
+    # Save outputs
+    save_to_excel(filtered_movies, os.path.join(outputs_dir, "filtered_movies.xlsx"))
+    save_to_excel(filtered_tvseries, os.path.join(outputs_dir, "filtered_tvseries.xlsx"))
+
     print("Process complete!")
+    print("Filtered movies and TV series saved successfully.")
 
 if __name__ == "__main__":
     main()
