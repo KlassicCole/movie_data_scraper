@@ -1,12 +1,22 @@
 import os
 import pandas as pd
-from filter_datasets import filter_by_votes, filter_by_rating, filter_by_genre, filter_by_language, exclude_watched_titles, exclude_vintage_films
+from filter_datasets import filter_by_votes, filter_by_rating, filter_by_genre, exclude_watched_titles, exclude_vintage_films
 from output_writer import save_to_excel
 
-def load_dataset(file_path):
-    """Loads a single dataset from a TSV file."""
-    print(f"Loading datasets... {file_path}")
-    return pd.read_csv(file_path, sep="\t", low_memory=False)
+# Define Paths
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+datasets_dir = os.path.join(project_root, "datasets")
+
+# Paths to the Merged Datasets
+merged_movies_path = os.path.join(datasets_dir, 'restructured_datasets', 'combined', 'merged_us_english_movies.tsv')
+merged_tvseries_path = os.path.join(datasets_dir, 'restructured_datasets', 'combined', 'merged_us_english_tvseries.tsv')
+
+def load_merged_datasets():
+    """Load the merged US and English datasets for movies and TV series."""
+    print("Loading merged datasets...")
+    movies_data = pd.read_csv(merged_movies_path, sep='\t', low_memory=False)
+    tvseries_data = pd.read_csv(merged_tvseries_path, sep='\t', low_memory=False)
+    return movies_data, tvseries_data
 
 # Interactive filtering function
 def interactive_filter(data, user_dir):
@@ -24,9 +34,11 @@ def interactive_filter(data, user_dir):
     # Start with the original data
     filtered_data = data.copy()  # Work on a copy to avoid modifying the original dataset
 
+    # Set default values to avoid 'referenced before assignment' error
+    min_votes = 0  # Default: No minimum votes
+    min_rating = 0  # Default: No minimum rating
+
     # HARD CODED Filters
-    # filtered_data = filter_by_language(filtered_data, 'en')
-    # print("Filtering for English titles...")
     filtered_data = exclude_vintage_films(filtered_data, year_threshold=1960)
     print("Filtering for title newer than 1960...")
 
@@ -59,31 +71,27 @@ def interactive_filter(data, user_dir):
     watched_tvseries_file = os.path.join(user_dir, "cole_watched_tvseries.xlsx")
     filtered_data = exclude_watched_titles(filtered_data, watched_tvseries_file)
 
-    return filtered_data
+    return filtered_data, min_votes, min_rating
 
 def main():
     # Paths and directories
     project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-    datasets_dir = os.path.join(project_root, "datasets", "restructured_datasets")
-    outputs_dir = os.path.join(project_root, "outputs")
-    user_dir = os.path.join(project_root, "usrdata", "klassiccole")
+    datasets_dir = os.path.join(project_root, 'datasets', 'restructured_datasets', 'combined')
+    outputs_dir = os.path.join(project_root, 'outputs')
+    user_dir = os.path.join(project_root, 'usrdata', 'klassiccole')
     os.makedirs(outputs_dir, exist_ok=True)
 
-    # File paths
-    movies_path = os.path.join(datasets_dir, "movies.tsv")
-    tvseries_path = os.path.join(datasets_dir, "tvseries.tsv")
+    # Load merged datasets
+    movies_data, tvseries_data = load_merged_datasets()
 
-    # Load datasets
-    movies_data = load_dataset(movies_path)
-    tvseries_data = load_dataset(tvseries_path)
+    # Apply filters once for movies and get filter values
+    filtered_movies, min_votes, min_rating = interactive_filter(movies_data, user_dir)
 
-    # Prompt user for filters and apply the same logic to both datasets
-    filtered_movies = interactive_filter(movies_data, user_dir)
+    # Apply the same filters to TV series
     filtered_tvseries = tvseries_data.copy()
-
-    # Apply the same filters to TV series without prompting again
-    filtered_tvseries = filter_by_language(filtered_tvseries, 'en')
     filtered_tvseries = exclude_vintage_films(filtered_tvseries, year_threshold=1960)
+    filtered_tvseries = filter_by_votes(filtered_tvseries, min_votes)
+    filtered_tvseries = filter_by_rating(filtered_tvseries, min_rating)
 
     # Save outputs
     save_to_excel(filtered_movies, os.path.join(outputs_dir, "filtered_movies.xlsx"))

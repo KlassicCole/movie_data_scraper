@@ -12,6 +12,9 @@ title_akas_path = os.path.join(datasets_dir, 'title.akas.tsv')
 
 # Ensure output directory exists
 os.makedirs(output_dir, exist_ok=True)
+combined_output_dir = os.path.join(output_dir, 'combined')
+os.makedirs(combined_output_dir, exist_ok=True)
+
 
 def load_and_merge_datasets():
     # Load datasets
@@ -70,9 +73,57 @@ def filter_by_language_and_save(merged_data):
 
     print("Files saved in 'language' subfolder.")
 
+def merge_us_and_english_movies():
+    # Paths to the input files
+    region_movies_path = os.path.join(output_dir, 'region', 'us_movies.tsv')
+    language_movies_path = os.path.join(output_dir, 'language', 'english_movies.tsv')
+
+    # Load datasets
+    print("Loading US and English movies datasets for merging...")
+    us_movies = pd.read_csv(region_movies_path, sep='\t', low_memory=False)
+    english_movies = pd.read_csv(language_movies_path, sep='\t', low_memory=False)
+
+    # Concatenate datasets (stacking rows)
+    print("Concatenating datasets...")
+    merged = pd.concat([us_movies, english_movies], ignore_index=True)
+
+    # Remove duplicate 'tconst', keeping the first occurrence
+    merged = merged.drop_duplicates(subset=['tconst'], keep='first')
+
+    # Save the merged dataset
+    output_file = os.path.join(combined_output_dir, 'merged_us_english_movies.tsv')
+    merged.to_csv(output_file, sep='\t', index=False)
+
+    print(f"Merged file saved as '{output_file}' in 'combined' folder.")
+
+def merge_us_and_english_tvseries():
+    # Paths to the input files
+    region_tvseries_path = os.path.join(output_dir, 'region', 'us_tvseries.tsv')
+    language_tvseries_path = os.path.join(output_dir, 'language', 'english_tvseries.tsv')
+
+    # Load datasets
+    print("Loading US and English TV series datasets for merging...")
+    us_tvseries = pd.read_csv(region_tvseries_path, sep='\t', low_memory=False)
+    english_tvseries = pd.read_csv(language_tvseries_path, sep='\t', low_memory=False)
+
+    # Concatenate datasets (stacking rows)
+    print("Concatenating TV series datasets...")
+    merged = pd.concat([us_tvseries, english_tvseries], ignore_index=True)
+
+    # Remove duplicate 'tconst', keeping the first occurrence
+    merged = merged.drop_duplicates(subset=['tconst'], keep='first')
+
+    # Save the merged dataset
+    output_file = os.path.join(combined_output_dir, 'merged_us_english_tvseries.tsv')
+    merged.to_csv(output_file, sep='\t', index=False)
+
+    print(f"Merged file saved as '{output_file}' in 'combined' folder.")
+
 if __name__ == "__main__":
     merged_data = load_and_merge_datasets()
     filter_by_region_and_save(merged_data)  # US filter
     filter_by_language_and_save(merged_data)  # English filter
+    merge_us_and_english_movies() # Merge en and US filtered movies
+    merge_us_and_english_tvseries() # Merge en and US filtered tvseries
 
 
